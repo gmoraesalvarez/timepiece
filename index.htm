@@ -1,0 +1,155 @@
+<!doctype html>
+<html>
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>oi</title>
+    <link rel="stylesheet" href="corpo.css">
+  </head>
+  <body>
+    <div id="bar" class="bar">
+      <a id='showlogs' href="javascript:void(0)" onclick="show_logs()">logs</a>
+    </div>
+    <div id="corpo" class="corpo">
+      <div id='login' class='login'>
+        <a style="display:none" href="javascript:void(0)" onclick="new_act()">+act</a>
+        <h2>usuário</h2><input id='usr' name='usr' value=''>
+        <h2>senha</h2><input id='pass' name='pass' value='' type='password'>
+        <a href="javascript:void(0)" onclick="login()">entrar</a>
+        <a href="javascript:void(0)" onclick="local()">modo local</a>
+      </div>
+    </div>
+    <div id='logs' class='logs'>
+    </div>
+  </body>
+</html>
+
+  <script>
+    modo=1;
+    token=0;
+    acts=[];
+    log=[];
+    function local(){
+      modo=0;
+      start();
+    }
+    function login(){
+      usr=document.getElementById('usr').value;
+      pass=document.getElementById('pass').value;
+      //send request to addr+'?do=Users.Auth&usr='+usr+'&pass='+pass;
+      //token = get answer from addr
+      token=1;
+      start();
+    }
+    function start(){
+      document.getElementById('login').style='display:none';
+      if (modo==0){
+        if (window.localStorage.getItem('acts') == null){new_act();}
+        else {
+          acts=JSON.parse(window.localStorage.getItem('acts'));
+          window.localStorage.getItem('log') == null ? log=[]:log=JSON.parse(window.localStorage.getItem('log'));
+          restore_acts();
+          new_act();
+        }
+      }
+      if (modo==2){
+        if (window.localStorage.getItem('acts') == null){new_act();}
+        else {
+          acts=JSON.parse(window.localStorage.getItem('acts'));
+          window.localStorage.getItem('log') == null ? log=[]:log=JSON.parse(window.localStorage.getItem('log'));
+          restore_acts();
+          new_act();
+        }
+      }
+    }
+
+//////////////////////////////////////////////////////
+//////////////////////////////////////////////////////
+    corpo=document.getElementById('corpo');
+    //document.getElementById('logs').style.display == 'none';
+    act_count=0;
+    sec=0;
+    leid=0;
+    chrono=0;
+    function restore_acts(){
+      if (modo==0){ for (i=0;i<acts.length;i++){
+        act=document.createElement('div');
+        act.setAttribute('class','actbox');
+        act_count++;
+        act.innerHTML="<a id='play"+act_count+"' href='javascript:void(0)' onclick='play("+act_count+")'>&#9658;</a>";
+        act.innerHTML+="<div id='t"+act_count+"'>0</div>";
+        act.innerHTML+="<input id='"+act_count+"' name='nome' value='"+acts[i]+"'>";
+        corpo.appendChild(act);
+        }
+      }
+    }
+    function new_act(){
+      act=document.createElement('div');
+      act.setAttribute('class','actbox');
+      //act.innerHTML+="<a href='http://192.168.25.115/~patrick/timepiece/backend/?do=Users.Hello&Key=AO'>Teste</a>"
+      act_count++;
+      act.innerHTML="<a id='play"+act_count+"' href='javascript:void(0)' onclick='play("+act_count+")'>&#9658;</a>";
+      act.innerHTML+="<div id='t"+act_count+"'>0</div>";
+      act.innerHTML+="<input id='"+act_count+"' name='nome' value='tarefa sem nome'>";
+      corpo.appendChild(act);
+    }
+    function play(id){
+      name = document.getElementById(id).value;
+      if (chrono == 0) {
+        //send request to addr+'?do=Users.Start&TaskName='+name;
+        sec=0;
+        leid=id;
+        chrono = window.setInterval(incchrono,1000);
+        document.getElementById('play'+id).innerHTML='&#9632;';
+        document.getElementById('t'+leid).innerHTML='00:00';
+        if (act_count == id) {
+          acts.push(name);
+          new_act();
+        };
+      }
+      else {
+        if (leid == id) {
+          //send request to addr+'?do=Users.Stop&TaskName='+name;
+          window.clearInterval(chrono);
+          document.getElementById('play'+id).innerHTML='&#9658;';
+          chrono=0;
+          if (modo==0){
+            var today = new Date();
+            var dd = today.getDate();
+            var mm = today.getMonth()+1; //January is 0!
+            var yyyy = today.getFullYear();
+            var hh = today.getHours();
+            var min = today.getMinutes();
+            date=yyyy+'.'+mm+'.'+dd+'-'+hh+':'+min;
+            log.push(name+';'+sec+';'+date);
+            console.log(log);
+            window.localStorage.setItem('acts',JSON.stringify(acts));
+            window.localStorage.setItem('log',JSON.stringify(log));
+          }
+        }
+      };
+    }
+    function incchrono(){
+      sec++;
+      les_min=Math.floor(sec/60);
+      if (les_min < 10) {les_min='0'+les_min}
+      les_sec= sec%60;
+      if (les_sec < 10) {les_sec='0'+les_sec}
+      document.getElementById('t'+leid).innerHTML=les_min+':'+les_sec;
+    }
+
+    function show_logs(){
+      logdiv=document.getElementById('logs');
+      logdiv.style.display == 'none' ? logdiv.style.display='block':logdiv.style.display='none';
+      temptable='REGISTRO DE ATIVIDADES<br><br><table><th>data/hora</th><th>atividade</th><th>duração</th>';
+      for (i=0;i<log.length;i++) {
+        entry=log[i].split(';');
+        temptable=temptable+'<tr><td>'+entry[2]+'</td><td>'+entry[0]+'</td><td>'+entry[1]+'</td></tr>';
+      }
+      console.log(temptable);
+      logdiv.innerHTML='';
+      logdiv.innerHTML+=temptable+'</table>';
+      console.log(logdiv.innerHTML);
+    }
+    //function start(){new_act();console.log('start')}
+    //window.onload = start;
+  </script>
