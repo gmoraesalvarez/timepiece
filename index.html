@@ -1,0 +1,268 @@
+<!doctype html>
+<html>
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>oi</title>
+    <link rel="stylesheet" href="corpo.css">
+  </head>
+  <body>
+    <div id="bar" class="bar">
+      <a id='exit' href="javascript:void(0)" onclick="location.reload()">sair</a>
+      <a id='showoptions' href="javascript:void(0)" onclick="show_options()">opções</a>
+      <a id='showlogs' href="javascript:void(0)" onclick="show_logs()">logs</a>
+    </div>
+    <div id="corpo" class="corpo">
+      <div id='login' class='login'>
+        <h2>servidor</h2><input name="servidor" id="servidor" value=""/>
+        <a style="display:none" href="javascript:void(0)" onclick="new_act()">+act</a>
+        <h2>usuário</h2><input id='usr' name='usr' value=''>
+        <h2>senha</h2><input id='pass' name='pass' value='' type='password' onkeyup="if (event.keyCode == 13) { login(); }">
+        <a href="javascript:void(0)" onclick="login()">entrar</a>
+        <a href="javascript:void(0)" onclick="local()">modo local</a>
+      </div>
+    </div>
+    <div id='logs' class='logs'>
+    </div>
+    <div id='options' class='options'>
+    </div>
+  </body>
+</html>
+  <script src="sha256.min.js"></script>
+  <script>
+    inserv=document.getElementById('servidor').value;
+    server=inserv+'backend.php';
+    modo=1;
+    token='';
+    acts=[];
+    log=[];
+    remotedata='';
+    remotelog='';
+    function local(){
+      modo=0;
+      start();
+    }
+    function login(){
+      console.log('login');
+      usr=document.getElementById('usr').value;
+      pass=document.getElementById('pass').value;
+      hash=sha256(pass);
+      //console.log(hash);
+      //send request to addr+'?do=Users.Auth&usr='+usr+'&pass='+pass;
+      login = new XMLHttpRequest();
+      login.open("GET", server+'?u='+usr+'&p='+hash, true);
+      login.onload = function(){
+        //console.log(login.responseText);
+      	if (login.responseText != "failed"){
+      	  modo=1;
+          token=login.responseText;
+          //console.log('token '+token);
+            
+      	  data_log = new XMLHttpRequest();
+      	  data_log.open("GET", server+'?log='+usr, false);
+          data_log.onload = function() {
+            remotelog=data_log.responseText;
+          }
+          data_log.send(null);
+      	  
+      	  data_acts = new XMLHttpRequest();
+      	  data_acts.open("GET", server+'?acts='+usr, false);
+          data_acts.onload = function() {
+          	remoteacts=data_acts.responseText;
+            start();
+          }
+      	  data_acts.send(null);
+        } else {
+          document.getElementById('pass').value='';
+          location.reload();
+        }
+      }
+      login.send(null);
+      //token = get answer from addr  
+    }
+    function start(){
+      document.getElementById('bar').style='display:block';
+      document.getElementById('login').style='display:none';
+      if (modo==0){
+        if (window.localStorage.getItem('acts') == null){new_act();}
+        else {
+          acts=JSON.parse(window.localStorage.getItem('acts'));
+          window.localStorage.getItem('log') == null ? log=[]:log=JSON.parse(window.localStorage.getItem('log'));
+          restore_acts();
+          new_act();
+        }
+      }
+      if (modo==1){
+        if (remoteacts == 'nada'){new_act();}
+        else {
+          console.log(remoteacts);
+          acts=JSON.parse(remoteacts);
+          remotelog == null ? log=[]:log=JSON.parse(remotelog);
+          restore_acts();
+          new_act();
+        }
+      }
+    }
+
+//////////////////////////////////////////////////////
+//////////////////////////////////////////////////////
+    corpo=document.getElementById('corpo');
+    //document.getElementById('logs').style.display == 'none';
+    act_count=0;
+    sec=0;
+    leid=0;
+    chrono=0;
+    function restore_acts(){
+      len=acts.length;
+      for (i=0;i<len;i++){
+        act=document.createElement('div');
+        act.setAttribute('class','actbox');
+        act_count++;
+        act.innerHTML="<a id='play"+act_count+"' href='javascript:void(0)' onclick='play("+act_count+")'>&#9658;</a>";
+        act.innerHTML+="<div id='t"+act_count+"'>0</div>";
+        act.innerHTML+="<input id='"+act_count+"' name='nome' value='"+acts[i]+"'>";
+        corpo.appendChild(act);
+      }
+    }
+    function new_act(){
+      act=document.createElement('div');
+      act.setAttribute('class','actbox');
+      //act.innerHTML+="<a href='http://192.168.25.115/~patrick/timepiece/backend/?do=Users.Hello&Key=AO'>Teste</a>"
+      act_count++;
+      act.innerHTML="<a id='play"+act_count+"' href='javascript:void(0)' onclick='play("+act_count+")'>&#9658;</a>";
+      act.innerHTML+="<div id='t"+act_count+"'>0</div>";
+      act.innerHTML+="<input id='"+act_count+"' name='nome' value='tarefa sem nome'>";
+      corpo.appendChild(act);
+    }
+    function play(id){
+      name = document.getElementById(id).value;
+      if (chrono == 0) {
+        //send request to addr+'?do=Users.Start&TaskName='+name;
+        sec=0;
+        leid=id;
+        chrono = window.setInterval(incchrono,1000);
+        document.getElementById('play'+id).innerHTML='&#9632;';
+        document.getElementById('t'+leid).innerHTML='00:00';
+        if (act_count == id) {
+          acts.push(name);
+          new_act();
+        };
+      }
+      else {
+        if (leid == id) {
+          //send request to addr+'?do=Users.Stop&TaskName='+name;
+          window.clearInterval(chrono);
+          document.getElementById('play'+id).innerHTML='&#9658;';
+          chrono=0;
+            //if (modo==0){
+            //today = new Date();
+            //dd = today.getDate();
+            //mm = today.getMonth()+1; //January is 0!
+            //yyyy = today.getFullYear();
+            //hh = today.getHours();
+            //min = today.getMinutes();
+            //date=yyyy+'.'+mm+'.'+dd+'-'+hh+':'+min;
+            log.push(name+';'+sec+';'+Date.now());
+            console.log(log);
+            save();
+            //}
+        }
+      }
+    }
+    function incchrono(){
+      sec++;
+      les_min=Math.floor(sec/60);
+      if (les_min < 10) {les_min='0'+les_min}
+      les_sec= sec%60;
+      if (les_sec < 10) {les_sec='0'+les_sec}
+      document.getElementById('t'+leid).innerHTML=les_min+':'+les_sec;
+    }
+
+    function show_logs(){
+      logdiv=document.getElementById('logs');
+      //logdiv.style.display == 'block' ? logdiv.style.display='none':logdiv.style.display='block';
+      if (logdiv.style.display == 'block'){logdiv.style.display='none';} else{logdiv.style.display='block';}
+      temptable='REGISTRO DE ATIVIDADES<br><br><table><th>data/hora</th><th>atividade</th><th>duração</th>';
+      len=log.length;
+      for (i=0;i<len;i++) {
+        entry=log[i].split(';');
+        duration=timestamp(entry[1]*1000);
+        day = formattime(entry[2]);
+        console.log('log entry 2 '+day);
+        temptable=temptable+'<tr><td>'+day+'</td><td>'+entry[0]+'</td><td>'+duration+'</td></tr>';
+      }
+      console.log(temptable);
+      logdiv.innerHTML='';
+      logdiv.innerHTML+=temptable+'</table>';
+      console.log(logdiv.innerHTML);
+    }
+    function show_options(){
+      optdiv=document.getElementById('options');
+      //logdiv.style.display == 'block' ? logdiv.style.display='none':logdiv.style.display='block';
+      if (optdiv.style.display == 'block'){optdiv.style.display='none';} else{optdiv.style.display='block';}
+      tempcontent='Opções de conta';
+      //console.log(temptable);
+      optdiv.innerHTML='';
+      optdiv.innerHTML+=tempcontent;
+      //console.log(logdiv.innerHTML);
+    }
+    
+    function save(){
+      if (modo == 0){
+        window.localStorage.setItem('acts',JSON.stringify(acts));
+        window.localStorage.setItem('log',JSON.stringify(log));
+      }
+      if (modo == 1){
+        console.log('saveremote');
+        saveremote = new XMLHttpRequest();
+        saveremote.open("POST", server+'?save='+usr, true);
+        saveremote.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
+        saveremote.send('save='+usr+'&acts='+JSON.stringify(acts)+'&log='+JSON.stringify(log));
+        saveremote.onload = function(){       
+       	  remotedebug=saveremote.responseText;
+          console.log(remotedebug);
+        }
+      }
+    }
+    //function start(){new_act();console.log('start')}
+    //window.onload = start;
+    
+    // MISC FUNCTIONS
+    ///////////////////////////  
+    function timestamp(ms) { // FROM STACKOVERFLOW
+      seconds = parseInt(ms / 1000);
+      hh = Math.floor(seconds / 3600);
+      mm = Math.floor((seconds - (hh * 3600)) / 60);
+      ss = seconds - (hh * 3600) - (mm * 60);
+  
+      if (hh < 10) {hh = '0' + hh}
+      if (mm < 10) {mm = '0' + mm}
+      if (ss < 10) {ss = '0' + ss}
+  
+      return hh + ':' + mm + ':' + ss;
+    };
+      
+    function formattime(milis){
+      t = new Date();
+	  t.setTime( milis );
+      y = t.getFullYear();
+      m = t.getMonth();
+      d = t.getDay();
+      h = t.getHours();
+      mi = t.getMinutes();
+      s = t.getSeconds();
+      mm = ''+m;
+      dd = ''+d;
+      hh = ''+h;
+      min = ''+mi;
+      ss = ''+s;
+      if (m < 10) {mm = '0'+m;}
+      if (d < 10) {dd = '0'+d;}
+      if (h < 10) {hh = '0'+h;}
+      if (mi < 10) {min = '0'+mi;}
+      if (s < 10) {ss = '0'+s;}
+        
+      formatd = y+'.'+mm+'.'+dd+' '+hh+':'+min+':'+ss;
+      return formatd;
+        //console.log('formattime result '+formatd);
+    }
+  </script>
